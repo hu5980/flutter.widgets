@@ -392,10 +392,6 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
 
   void _jumpTo({@required int index, double offset}) {
     cancelScrollCallback?.call();
-    if (index > widget.itemCount - 1) {
-      index = widget.itemCount - 1;
-    }
-
     final controller =
         _showFrontList ? frontScrollController : backScrollController;
     final lastTarget = _showFrontList ? frontTarget : backTarget;
