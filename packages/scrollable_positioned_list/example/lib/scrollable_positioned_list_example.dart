@@ -9,7 +9,7 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 const numberOfItems = 5001;
 const minItemHeight = 20.0;
 const maxItemHeight = 150.0;
-const scrollDuration = Duration(seconds: 2);
+const scrollDuration = Duration(milliseconds: 250);
 
 /// Example widget that uses [ScrollablePositionedList].
 ///
@@ -42,8 +42,8 @@ class _ScrollablePositionedListPageState
   List<Color> itemColors;
   bool reversed = false;
 
-  /// The alignment to be used next time the user scrolls or jumps to an item.
-  double alignment = 0;
+  /// The offset to be used next time the user scrolls or jumps to an item.
+  double offset = 0;
 
   @override
   void initState() {
@@ -62,26 +62,44 @@ class _ScrollablePositionedListPageState
   }
 
   @override
-  Widget build(BuildContext context) => Material(
-        child: OrientationBuilder(
-          builder: (context, orientation) => Column(
-            children: <Widget>[
-              Expanded(
-                child: list(orientation),
-              ),
-              positionsView,
-              Row(
-                children: <Widget>[
-                  Column(
-                    children: <Widget>[
-                      scrollControlButtons,
-                      jumpControlButtons,
-                      alignmentControl,
-                    ],
-                  ),
-                ],
-              )
-            ],
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(
+          title: Text("scrollable_position_list"),
+          actions: <Widget>[
+            IconButton(
+              icon: Icon(Icons.lock),
+              onPressed: () {
+                // scroll to end
+                itemScrollController.scrollTo(
+                    index: itemHeights.length - 1,
+                    duration: Duration(milliseconds: 250),
+                    curve: Curves.easeInOut);
+              },
+            )
+          ],
+        ),
+        body: SafeArea(
+          bottom: true,
+          child: OrientationBuilder(
+            builder: (context, orientation) => Column(
+              children: <Widget>[
+                Expanded(
+                  child: list(orientation),
+                ),
+                positionsView,
+                Row(
+                  children: <Widget>[
+                    Column(
+                      children: <Widget>[
+                        scrollControlButtons,
+                        jumpControlButtons,
+                        alignmentControl,
+                      ],
+                    ),
+                  ],
+                )
+              ],
+            ),
           ),
         ),
       );
@@ -89,12 +107,14 @@ class _ScrollablePositionedListPageState
   Widget get alignmentControl => Row(
         mainAxisSize: MainAxisSize.max,
         children: <Widget>[
-          const Text('Alignment: '),
+          const Text('Offset: '),
           SizedBox(
             width: 200,
             child: Slider(
-              value: alignment,
-              onChanged: (double value) => setState(() => alignment = value),
+              max: 100,
+              min: 0,
+              value: offset,
+              onChanged: (double value) => setState(() => offset = value),
             ),
           ),
         ],
@@ -181,7 +201,7 @@ class _ScrollablePositionedListPageState
         key: ValueKey<String>('Scroll$value'),
         onTap: () => scrollTo(value),
         child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 18),
             child: Text('$value')),
       );
 
@@ -189,7 +209,7 @@ class _ScrollablePositionedListPageState
         key: ValueKey<String>('Jump$value'),
         onTap: () => jumpTo(value),
         child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 18),
             child: Text('$value')),
       );
 
@@ -197,10 +217,10 @@ class _ScrollablePositionedListPageState
       index: index,
       duration: scrollDuration,
       curve: Curves.easeInOutCubic,
-      alignment: alignment);
+      offset: offset);
 
   void jumpTo(int index) =>
-      itemScrollController.jumpTo(index: index, alignment: alignment);
+      itemScrollController.jumpTo(index: index, offset: offset);
 
   /// Generate item number [i].
   Widget item(int i, Orientation orientation) {

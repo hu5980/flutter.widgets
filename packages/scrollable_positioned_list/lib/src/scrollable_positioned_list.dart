@@ -176,8 +176,13 @@ class ItemScrollController {
 
   /// Immediately, without animation, reconfigure the list so that item at
   /// [index]'s leading edge is at the given [alignment].
-  void jumpTo({@required int index, double alignment = 0}) {
-    _scrollableListState._jumpTo(index: index, alignment: alignment);
+  void jumpTo({@required int index, double offset = 0}) {
+    _scrollableListState._jumpTo(index: index, offset: offset);
+  }
+
+  /// get first widget's [int index, double offset] in current viewport
+  List<dynamic> getCurrentIndexInfo({bool wholeVisible = false}) {
+    return _scrollableListState._getCurrentIndexInfo(wholeVisible);
   }
 
   /// Animation the list over [duration] using the given [curve] such that the
@@ -186,13 +191,13 @@ class ItemScrollController {
   /// [duration] must be greater than 0; otherwise, use [jumpTo].
   Future<void> scrollTo(
       {@required int index,
-      double alignment = 0,
+      double offset = 0,
       @required Duration duration,
       Curve curve = Curves.linear}) {
     assert(_scrollableListState != null);
     return _scrollableListState._scrollTo(
       index: index,
-      alignment: alignment,
+      offset: offset,
       duration: duration,
       curve: curve,
     );
@@ -218,9 +223,7 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
       ProxyAnimation(const AlwaysStoppedAnimation<double>(1.0));
 
   int backTarget = 0;
-  double backAlignment = 0;
   int frontTarget;
-  double frontAlignment;
   Function cancelScrollCallback;
   Function endScrollCallback;
   _ListDisplay listDisplay = _ListDisplay.front;
@@ -231,8 +234,6 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
     super.initState();
     ItemPosition initialPosition = PageStorage.of(context).readState(context);
     frontTarget = initialPosition?.index ?? widget.initialScrollIndex;
-    frontAlignment =
-        initialPosition?.itemLeadingEdge ?? widget.initialAlignment;
     if (widget.itemCount != null &&
         widget.itemCount > 0 &&
         frontTarget > widget.itemCount - 1) {
@@ -310,7 +311,6 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
                     scrollDirection: widget.scrollDirection,
                     reverse: widget.reverse,
                     cacheExtent: _cacheExtent(constraints),
-                    alignment: backAlignment,
                     physics: widget.physics,
                     addSemanticIndexes: widget.addSemanticIndexes,
                     semanticChildCount: widget.semanticChildCount,
@@ -341,7 +341,6 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
                         scrollDirection: widget.scrollDirection,
                         reverse: widget.reverse,
                         cacheExtent: _cacheExtent(constraints),
-                        alignment: frontAlignment,
                         physics: widget.physics,
                         addSemanticIndexes: widget.addSemanticIndexes,
                         semanticChildCount: widget.semanticChildCount,
@@ -365,29 +364,70 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
               widget.minCacheExtent,
             );
 
-  void _jumpTo({@required int index, double alignment}) {
+  List<dynamic> _getCurrentIndexInfo(bool wholeVisible) {
+    final controller =
+        _showFrontList ? frontScrollController : backScrollController;
+    final notifier =
+        _showFrontList ? frontItemPositionNotifier : backItemPositionNotifier;
+    var visibleItems = notifier.itemPositions.value.where((i) {
+      if (wholeVisible) {
+        return i.itemLeadingEdge >= 0 && i.itemTrailingEdge <= 1;
+      } else {
+        return i.itemTrailingEdge > 0 && i.itemLeadingEdge < 1;
+      }
+    });
+    ItemPosition firstVisibleItem = visibleItems.fold(null, (v, i) {
+      if (v == null) {
+        return i;
+      } else if (i.index < v.index) {
+        return i;
+      } else {
+        return v;
+      }
+    });
+    var offset = controller.position.viewportDimension *
+        firstVisibleItem.itemLeadingEdge;
+    return [firstVisibleItem.index, offset];
+  }
+
+  void _jumpTo({@required int index, double offset}) {
     cancelScrollCallback?.call();
     if (index > widget.itemCount - 1) {
       index = widget.itemCount - 1;
     }
-    if (_showFrontList) {
-      frontScrollController.jumpTo(0);
-      setState(() {
-        frontTarget = index;
-        frontAlignment = alignment;
-      });
+
+    final controller =
+        _showFrontList ? frontScrollController : backScrollController;
+    final lastTarget = _showFrontList ? frontTarget : backTarget;
+    final direction = index > lastTarget ? 1 : -1;
+
+    setState(() {
+      if (lastTarget != index) {
+        if (_showFrontList) {
+          frontTarget = index;
+        } else {
+          backTarget = index;
+        }
+      }
+    });
+    var jumpOffset = offset;
+    if (direction == -1) {
+      controller.jumpTo(jumpOffset);
     } else {
-      backScrollController.jumpTo(0);
-      setState(() {
-        backTarget = index;
-        backAlignment = alignment;
+      controller.jumpTo(jumpOffset);
+      // if overflow, reset the offset
+      WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+        var offset = min(jumpOffset, controller.position.maxScrollExtent);
+        if (controller.offset != offset) {
+          controller.jumpTo(offset);
+        }
       });
     }
   }
 
   Future<void> _scrollTo(
       {@required int index,
-      double alignment,
+      double offset,
       @required Duration duration,
       Curve curve = Curves.linear}) async {
     if (index > widget.itemCount - 1) {
@@ -398,20 +438,20 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
       SchedulerBinding.instance.addPostFrameCallback((_) {
         _startScroll(
           index: index,
-          alignment: alignment,
+          offset: offset,
           duration: duration,
           curve: curve,
         );
       });
     } else {
       await _startScroll(
-          index: index, alignment: alignment, duration: duration, curve: curve);
+          index: index, offset: offset, duration: duration, curve: curve);
     }
   }
 
   Future<void> _startScroll(
       {@required int index,
-      double alignment,
+      double offset,
       @required Duration duration,
       Curve curve = Curves.linear}) async {
     final lastTarget = _showFrontList ? frontTarget : backTarget;
@@ -429,12 +469,15 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
     if (itemPosition != null) {
       final localScrollAmount = itemPosition.itemLeadingEdge *
           startingScrollController.position.viewportDimension;
-      await startingScrollController.animateTo(
-          startingScrollController.offset +
-              localScrollAmount -
-              alignment * startingScrollController.position.viewportDimension,
-          duration: duration,
-          curve: curve);
+
+      var animateOffset =
+          startingScrollController.offset + localScrollAmount - offset;
+      // overflow checked
+      animateOffset =
+          min(animateOffset, startingScrollController.position.maxScrollExtent);
+
+      await startingScrollController.animateTo(animateOffset,
+          duration: duration, curve: curve);
     } else {
       final scrollAmount = _screenScrollCount *
           startingScrollController.position.viewportDimension;
@@ -447,19 +490,23 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
           frontOpacity.parent = _opacityAnimation(startingListDisplay).animate(
               AnimationController(vsync: this, duration: duration)..forward());
           startAnimationCallback = () {};
-          endingScrollController.jumpTo(-direction *
+          var endJump = -direction *
               (_screenScrollCount *
                       startingScrollController.position.viewportDimension -
-                  alignment *
-                      endingScrollController.position.viewportDimension));
-          endCompleter.complete(endingScrollController.animateTo(
-              -alignment * endingScrollController.position.viewportDimension,
-              duration: duration,
-              curve: curve));
-          startCompleter.complete(startingScrollController.animateTo(
-              startingScrollController.offset + direction * scrollAmount,
-              duration: duration,
-              curve: curve));
+                  offset);
+          var startScroll =
+              startingScrollController.offset + direction * scrollAmount;
+
+          endingScrollController.jumpTo(endJump);
+          var endScroll = min(
+              0.0 + offset, endingScrollController.position.maxScrollExtent);
+          endScroll =
+              max(endScroll, endingScrollController.position.minScrollExtent);
+          endCompleter.complete(endingScrollController.animateTo(endScroll,
+              duration: duration, curve: curve));
+          startCompleter.complete(startingScrollController
+              .animateTo(startScroll, duration: duration, curve: curve));
+
           cancelScrollCallback = () => _cancelScroll(startingListDisplay);
         });
       };
