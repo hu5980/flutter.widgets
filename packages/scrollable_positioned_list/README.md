@@ -4,6 +4,13 @@ A flutter list that allows scrolling to a specific item in the list.
 
 Also allows determining what items are currently visible.
 
+
+## Custom Changed by bomo
+
+1. change alignment to offset 
+2. get first widget info in viewport 
+3. scroll to end without bounce
+
 ## Usage
 
 A `ScrollablePositionedList` works much like the builder version of `ListView`
