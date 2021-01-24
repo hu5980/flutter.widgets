@@ -1,3 +1,21 @@
+# 0.1.9
+  * Fixed the example in `README.md`.  Fixes
+    [issue #191](https://github.com/google/flutter.widgets/issues/191).
+  * Made the example runnable with `flutter run`.  Fixes
+    [issue #211](https://github.com/google/flutter.widgets/issues/211).
+  * Updates to computation of semantic clip.
+  * Smoother transition between views on long scrolls.
+  * New controls over transition between views on long scrolls.
+
+# 0.1.8
+  * Set updateScheduled to false when short circuiting due to empty list.
+    To fix https://github.com/google/flutter.widgets/issues/182.
+
+# 0.1.7
+  * Apply viewport dimensions in UnboundedRenderedViewport.performResize.
+    To work around change in https://github.com/flutter/flutter/pull/61973 
+    causing breakage
+
 # 0.1.6
   * Change to do local scroll (without a fade) whenever target item is found 
     within the cache.

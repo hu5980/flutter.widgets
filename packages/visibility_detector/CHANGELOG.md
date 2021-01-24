@@ -1,3 +1,14 @@
+# 0.2.0-nullsafety.0
+
+* Update to null safety.
+
+* Try to fix the link to the example on pub.dev.
+
+* Revert tests to again use `RenderView` instead of `TestWindow`.
+
+* Add `VisibilityDetectorController.scheduleNotification` to force firing a
+  visibility callback.
+
 # 0.1.5
 
 * Compatibility fixes to `demo.dart` for Flutter 1.13.8.

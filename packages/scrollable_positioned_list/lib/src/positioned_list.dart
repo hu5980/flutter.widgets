@@ -31,7 +31,7 @@ class PositionedList extends StatefulWidget {
     @required this.itemBuilder,
     this.separatorBuilder,
     this.controller,
-    this.itemPositionNotifier,
+    this.itemPositionsNotifier,
     this.positionedIndex = 0,
     this.alignment = 0,
     this.scrollDirection = Axis.vertical,
@@ -63,7 +63,7 @@ class PositionedList extends StatefulWidget {
   final ScrollController controller;
 
   /// Notifier that reports the items laid out in the list after each frame.
-  final ItemPositionsNotifier itemPositionNotifier;
+  final ItemPositionsNotifier itemPositionsNotifier;
 
   /// Index of an item to initially align to a position within the viewport
   /// defined by [alignment].
@@ -304,7 +304,10 @@ class _PositionedListState extends State<PositionedList> {
     if (!updateScheduled) {
       updateScheduled = true;
       SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (registeredElements.value == null) return;
+        if (registeredElements.value == null) {
+          updateScheduled = false;
+          return;
+        }
         final positions = <ItemPosition>[];
         RenderViewport viewport;
         for (var element in registeredElements.value) {
@@ -341,7 +344,7 @@ class _PositionedListState extends State<PositionedList> {
                     scrollController.position.viewportDimension));
           }
         }
-        widget.itemPositionNotifier?.itemPositions?.value = positions;
+        widget.itemPositionsNotifier?.itemPositions?.value = positions;
         updateScheduled = false;
       });
     }
