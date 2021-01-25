@@ -346,7 +346,6 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
                         scrollDirection: widget.scrollDirection,
                         reverse: widget.reverse,
                         cacheExtent: _cacheExtent(constraints),
-                        alignment: backAlignment,
                         physics: widget.physics,
                         addSemanticIndexes: widget.addSemanticIndexes,
                         semanticChildCount: widget.semanticChildCount,
@@ -407,7 +406,7 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
     final controller =
         _showFrontList ? frontScrollController : backScrollController;
     final notifier =
-        _showFrontList ? frontItemPositionNotifier : backItemPositionNotifier;
+        _showFrontList ? frontItemPositionsNotifier : backItemPositionsNotifier;
     var visibleItems = notifier.itemPositions.value.where((i) {
       if (wholeVisible) {
         return i.itemLeadingEdge >= 0 && i.itemTrailingEdge <= 1;
