@@ -423,9 +423,13 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
         return v;
       }
     });
-    var offset = controller.position.viewportDimension *
-        firstVisibleItem.itemLeadingEdge;
-    return [firstVisibleItem.index, offset];
+    if (firstVisibleItem != null) {
+      final offset = controller.position.viewportDimension *
+          firstVisibleItem.itemLeadingEdge;
+      return [firstVisibleItem.index, offset];
+    } else {
+      return [-1, 0];
+    }
   }
 
   void _jumpTo({@required int index, double offset}) {
