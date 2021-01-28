@@ -231,6 +231,10 @@ class ItemScrollController {
   void _detach() {
     _scrollableListState = null;
   }
+
+  int get itemCount {
+    return _scrollableListState.itemCount;
+  }
 }
 
 class _ScrollablePositionedListState extends State<ScrollablePositionedList>
@@ -240,6 +244,8 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
   final frontScrollController = ScrollController(keepScrollOffset: false);
   final backScrollController = ScrollController(keepScrollOffset: false);
   final opacity = ProxyAnimation(const AlwaysStoppedAnimation<double>(1.0));
+
+  int get itemCount => widget.itemCount;
 
   int backTarget = 0;
   int frontTarget;
