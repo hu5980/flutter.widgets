@@ -464,6 +464,7 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
       // overflow checked
       animateOffset =
           min(animateOffset, primary.scrollController.position.maxScrollExtent);
+      animateOffset = max(animateOffset, primary.scrollController.position.minScrollExtent);
       await primary.scrollController.animateTo(animateOffset, duration: duration, curve: curve);
     } else {
       final scrollAmount = _screenScrollCount *
@@ -473,20 +474,22 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
       startAnimationCallback = () {
         SchedulerBinding.instance!.addPostFrameCallback((_) {
           startAnimationCallback = () {};
+          final alignmentOffset = alignment *
+              secondary.scrollController.position.viewportDimension;
           final endJump = -direction *
               (_screenScrollCount *
                   primary.scrollController.position.viewportDimension -
-                  alignment *
-                      secondary.scrollController.position.viewportDimension);
+                  alignmentOffset);
           opacity.parent = _opacityAnimation(opacityAnimationWeights).animate(
               AnimationController(vsync: this, duration: duration)..forward());
           secondary.scrollController.jumpTo(endJump);
 
           var startScroll =
-              primary.scrollController.offset + direction * scrollAmount;
+              primary.scrollController.offset - alignmentOffset + direction * scrollAmount;
           // overflow checked
           var endScroll = min(
-              0.0 + 0, secondary.scrollController.position.maxScrollExtent);
+              0.0 - alignmentOffset, secondary.scrollController.position.maxScrollExtent);
+          endScroll = max(endScroll, secondary.scrollController.position.minScrollExtent);
 
           startCompleter.complete(primary.scrollController.animateTo(
               startScroll,
