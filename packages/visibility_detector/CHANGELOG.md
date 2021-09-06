@@ -1,3 +1,13 @@
+# 0.2.0
+
+* Added `SliverVisibilityDetector` to report visibility of `RenderSliver`-based
+  widgets.  Fixes [issue #174](https://github.com/google/flutter.widgets/issues/174).
+
+# 0.2.0-nullsafety.1
+
+* Revert change to add `VisibilityDetectorController.scheduleNotification`,
+  which introduced unexpected memory usage.
+
 # 0.2.0-nullsafety.0
 
 * Update to null safety.

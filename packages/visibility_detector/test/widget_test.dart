@@ -44,9 +44,8 @@ void main() {
     'VisibilityDetector reports initial visibility',
     callback: (tester) async {
       final cellKey = demo.cellKey(0, 0);
-      final cell = find.byKey(cellKey);
-      final expectedRect = tester.getRect(cell);
-
+      final expectedRect =
+          tester.getRect(find.byKey(demo.cellContentKey(0, 0)));
       var info = _positionToVisibilityInfo[demo.RowColumn(0, 0)];
       expect(info, isNotNull);
 
@@ -72,11 +71,12 @@ void main() {
       final viewRect = tester.getRect(mainList);
 
       final cellKey = demo.cellKey(0, 0);
-      final cell = find.byKey(cellKey);
-      final originalRect = tester.getRect(cell);
+      final originalRect =
+          tester.getRect(find.byKey(demo.cellContentKey(0, 0)));
 
       const dy = 30.0;
-      await _doScroll(tester, mainList, const Offset(0, dy));
+      await _doScroll(tester, find.byKey(demo.secondaryScrollableKey(0)),
+          const Offset(0, dy));
 
       var info = _positionToVisibilityInfo[demo.RowColumn(0, 0)];
       expect(info, isNotNull);
@@ -107,14 +107,13 @@ void main() {
       final viewRect = tester.getRect(mainList);
 
       final cellKey = demo.cellKey(2, 0);
-      final cell = find.byKey(cellKey);
-      expect(cell, findsOneWidget);
-      final originalRect = tester.getRect(cell);
-
+      final originalRect =
+          tester.getRect(find.byKey(demo.cellContentKey(2, 0)));
       const dx = 30.0;
       expect(dx < originalRect.width, true);
 
-      await _doScroll(tester, cell, const Offset(dx, 0));
+      final row = find.byKey(demo.secondaryScrollableKey(2));
+      await _doScroll(tester, row, const Offset(dx, 0));
 
       var info = _positionToVisibilityInfo[demo.RowColumn(2, 0)];
       expect(info, isNotNull);
@@ -146,8 +145,8 @@ void main() {
       final viewRect = tester.getRect(mainList);
 
       final cellKey = demo.cellKey(0, 0);
-      final cell = find.byKey(cellKey);
-      final originalRect = tester.getRect(cell);
+      final originalRect =
+          tester.getRect(find.byKey(demo.cellContentKey(0, 0)));
 
       final dy = originalRect.bottom - viewRect.top;
       await _doScroll(tester, mainList, Offset(0, dy));
@@ -175,11 +174,13 @@ void main() {
       final viewRect = tester.getRect(mainList);
 
       final cellKey = demo.cellKey(0, 0);
-      final cell = find.byKey(cellKey);
-      final originalRect = tester.getRect(cell);
+      final originalRect =
+          tester.getRect(find.byKey(demo.cellContentKey(0, 0)));
 
       final dy = (originalRect.bottom - viewRect.top) - 1;
-      await _doScroll(tester, mainList, Offset(0, dy));
+
+      await _doScroll(
+          tester, find.byKey(demo.secondaryScrollableKey(0)), Offset(0, dy));
 
       var info = _positionToVisibilityInfo[demo.RowColumn(0, 0)];
       expect(info, isNotNull);
@@ -204,8 +205,8 @@ void main() {
     'tree',
     callback: (tester) async {
       final cellKey = demo.cellKey(0, 0);
-      final cell = find.byKey(cellKey);
-      final originalRect = tester.getRect(cell);
+      final originalRect =
+          tester.getRect(find.byKey(demo.cellContentKey(0, 0)));
 
       await _clearWidgetTree(tester, notifyNow: false);
 
@@ -242,28 +243,6 @@ void main() {
     },
   );
 
-  _wrapTest(
-    'VisibilityDetectorController.scheduleNotification forces a callback to '
-    'fire',
-    widget: _TestPropertyChange(key: _testPropertyChangeKey),
-    callback: (tester) async {
-      final state = _testPropertyChangeKey.currentState!;
-
-      // Validate the initial state.  The visibility callback should have fired
-      // exactly once.
-      expect(state.lastVisibleFraction, 1.0);
-      expect(state.callbackCount, 1);
-
-      VisibilityDetectorController.instance
-          .scheduleNotification(_TestPropertyChange.visibilityDetectorKey);
-
-      await _waitForVisibilityDetectorCallbacks(tester);
-
-      expect(state.lastVisibleFraction, 1.0);
-      expect(state.callbackCount, 2);
-    },
-  );
-
   testWidgets(
     'Pending callback is cancelled when forget is called',
     (tester) async {
@@ -275,16 +254,7 @@ void main() {
         onVisibilityChanged: (_) {},
         child: const Placeholder(),
       ));
-
-      await _waitForVisibilityDetectorCallbacks(tester);
-
-      expect(controller.widgetBoundsFor(key), isNot(null));
-      controller.forget(key);
-      expect(controller.widgetBoundsFor(key), null);
-
       await tester.pumpWidget(const Placeholder());
-
-      // Should clear any pending [Timer]s.
       controller.forget(key);
     },
   );
@@ -329,14 +299,14 @@ void main() {
       expect(_positionToVisibilityInfo[demo.RowColumn(5, 0)], null);
 
       await _simulateScreenRotation(tester);
-      await _waitForVisibilityDetectorCallbacks(tester);
+      await tester.pump(VisibilityDetectorController.instance.updateInterval);
 
       _expectVisibility(demo.RowColumn(0, 6), 0, epsilon: 0);
       _expectVisibility(demo.RowColumn(5, 0), 1, epsilon: 0);
 
       // Rotate back to the original size.
       await _simulateScreenRotation(tester);
-      await _waitForVisibilityDetectorCallbacks(tester);
+      await tester.pump(VisibilityDetectorController.instance.updateInterval);
 
       // Re-verify the original visibilities.
       _expectVisibility(demo.RowColumn(0, 6), 0.360);
@@ -408,7 +378,9 @@ void _wrapTest(
     // widget tree is destroyed, which is too late for our purposes. (See
     // details below.)
     await _initWidgetTree(
-        widget ?? const demo.VisibilityDetectorDemo(), tester);
+      widget ?? demo.VisibilityDetectorDemo(useSlivers: false),
+      tester,
+    );
     await callback(tester);
 
     /// When the test destroys the widget tree with [VisibilityDetector] widgets
@@ -422,11 +394,16 @@ void _wrapTest(
     /// callbacks to fire before ending the test.
     await _clearWidgetTree(tester);
   });
-}
 
-/// Waits sufficiently long for [VisibilityDetector] callbacks to fire.
-Future<void> _waitForVisibilityDetectorCallbacks(WidgetTester tester) async {
-  await tester.pump(VisibilityDetectorController.instance.updateInterval);
+  // Test one more time using slivers version of the demo.
+  testWidgets(description, (tester) async {
+    await _initWidgetTree(
+      widget ?? demo.VisibilityDetectorDemo(useSlivers: true),
+      tester,
+    );
+    await callback(tester);
+    await _clearWidgetTree(tester);
+  });
 }
 
 /// Scrolls the specified widget by the specified offset and waits sufficiently
@@ -442,7 +419,8 @@ Future<void> _doScroll(
   // Wait for the drag to complete.
   await tester.pumpAndSettle();
 
-  await _waitForVisibilityDetectorCallbacks(tester);
+  // Wait for callbacks to fire.
+  await tester.pump(VisibilityDetectorController.instance.updateInterval);
 }
 
 /// Invokes a callback to mutate a [State] object and waits sufficiently long
@@ -453,7 +431,8 @@ Future<void> _doStateChange(WidgetTester tester, VoidCallback callback) async {
   // Wait for the state change to rebuild the widget.
   await tester.pump();
 
-  await _waitForVisibilityDetectorCallbacks(tester);
+  // Wait for callbacks to fire.
+  await tester.pump(VisibilityDetectorController.instance.updateInterval);
 }
 
 // Simulates a screen rotation by swapping the screen width and height.
@@ -470,7 +449,7 @@ Future<void> _simulateScreenRotation(WidgetTester tester) async {
   // [VisibilityDetectorLayer.addToScene], whereas the [SizedBox] approach
   // triggers both.
   //
-  // TODO: Use TestWindow.physicalSizeTestValue.
+  // TODO(https://github.com/flutter/flutter/issues/62451): Use TestWindow.physicalSizeTestValue.
   await tester.binding.setSurfaceSize(newViewSize);
   tester.binding.scheduleFrame();
 
@@ -493,8 +472,6 @@ void _expectVisibility(demo.RowColumn rc, double expectedFraction,
 /// its visibility callback and that re-enabling it does.
 class _TestPropertyChange extends StatefulWidget {
   const _TestPropertyChange({Key? key}) : super(key: key);
-
-  static const visibilityDetectorKey = Key('TestPropertyChange');
 
   @override
   _TestPropertyChangeState createState() => _TestPropertyChangeState();
@@ -530,7 +507,7 @@ class _TestPropertyChangeState extends State<_TestPropertyChange> {
   @override
   Widget build(BuildContext context) {
     return VisibilityDetector(
-      key: _TestPropertyChange.visibilityDetectorKey,
+      key: const Key('TestPropertyChange'),
       onVisibilityChanged:
           visibilityDetectorEnabled ? _handleVisibilityChanged : null,
       child: const Placeholder(),

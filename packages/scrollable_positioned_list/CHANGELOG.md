@@ -1,3 +1,18 @@
+# 0.2.0-nullsafety.0
+  * Update to null safety.
+
+# 0.1.10
+  * Update the home page URL to fix
+    [issue #190](https://github.com/google/flutter.widgets/issues/190).
+  * Miscellaneous tweaks to the example.
+  * Added documentation to address
+    [issue #96](https://github.com/google/flutter.widgets/issues/96).
+  * Miscellaneous other cleanup.
+  * Restructured `_ScrollablePositionedListState` to try to simplify logic.
+  * Fixed an issue with `ItemScrollController.scrollTo` where it could scroll to
+    the wrong item if a non-zero `alignment` was specified and if the list was
+    manually scrolled by dragging.
+
 # 0.1.9
   * Fixed the example in `README.md`.  Fixes
     [issue #191](https://github.com/google/flutter.widgets/issues/191).
